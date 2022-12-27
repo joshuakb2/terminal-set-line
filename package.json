@@ -1,6 +1,6 @@
 {
   "name": "terminal-set-line",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Write and overwrite one specific line of terminal output at a time with a simple API.",
   "main": "index.mjs",
   "repository": {
