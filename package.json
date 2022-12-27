@@ -2,7 +2,8 @@
   "name": "terminal-set-line",
   "version": "1.0.3",
   "description": "Write and overwrite one specific line of terminal output at a time with a simple API.",
-  "main": "index.mjs",
+  "main": "index.js",
+  "types": "index.d.ts",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/joshuakb2/terminal-set-line.git"
