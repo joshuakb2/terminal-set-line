@@ -1,19 +1,18 @@
-import GetCursorPosition from 'get-cursor-position';
-
-const getCursorPosition = GetCursorPosition.sync;
+import './augmentations';
+import { sync as getCursorPosition } from 'get-cursor-position';
 
 // This is the greatest virtual line number that has been set.
 // Greatest == highest number, lowest location on the screen.
 // The cursor will live on the empty line below this one between writes.
-let lowestPrintedLine = null;
+let lowestPrintedLine: number | null = null;
 
 const getWindowHeight = () => process.stdout.getWindowSize()[1];
-const write = s => process.stdout.write(s);
-const down = n => process.stdout.moveCursor(0, n);
-const up = n => process.stdout.moveCursor(0, -n);
+const write = (s: string) => process.stdout.write(s);
+const down = (n: number) => process.stdout.moveCursor(0, n);
+const up = (n: number) => process.stdout.moveCursor(0, -n);
 const eraseLine = () => process.stdout.clearLine(0);
 
-export const setLine = (i, msg) => {
+export const setLine = (i: number, msg: string) => {
     // dy is the downward offset from the cursor's current virtual
     // position to where it needs to be.
     let dy = i - (lowestPrintedLine == null ? 0 : lowestPrintedLine + 1);
@@ -32,7 +31,7 @@ export const setLine = (i, msg) => {
         for (let i = 0; i < dy; i++) write('\n');
     }
     // This line is on the screen, but below us
-    else if (dy > 0) down(0, dy);
+    else if (dy > 0) down(dy);
     // This line is on the screen, but above us
     else if (dy < 0) up(-dy);
     // Otherwise, we are already on the correct line

@@ -1,3 +1,8 @@
+type Pair<Result> = {
+    index: number;
+    result: Result;
+};
+
 /**
  * Returns an async iterator for the results of running the given job for each given input, in parallel,
  * but not exceeding maxAtOnce simultaneously.
@@ -5,23 +10,25 @@
  * The optional isCandidateAcceptable function has this interface: (indexOfInput, setOfActiveInputs) => boolean.
  * If it gives false, then that input is skipped.
  *
- * @param {input => Promise<Output>} job
- * @param {int} maxAtOnce
- * @param {input[]} inputs
- * @param {function?} isCandidateAcceptable
- * @returns {async iterable of Promise<{ i: number, value: Output }>}
  */
-const threadpool = (job, maxAtOnce, inputs, isCandidateAcceptable) => {
+const threadpool = <Input, Result>(
+    job: (input: Input, index: number) => Promise<Result>,
+    maxAtOnce: number,
+    inputs: Input[],
+    isCandidateAcceptable?: (index: number, active: Set<number>) => boolean,
+): AsyncIterable<Pair<Result>> => {
     let completed = 0;
-    let promiseForNext, produceNext, produceError;
+    let promiseForNext: Promise<IteratorResult<Pair<Result>>> | undefined;
+    let produceNext: ((next: Pair<Result>) => void) | undefined;
+    let produceError: ((err: Error) => void) | undefined;
     // promiseConsumed will be true iff the iterator has consumed the uncompleted promise.
     let promiseConsumed = false;
     // promiseQueue contains completed promises that have not been consumed by the iterator yet.
-    let promiseQueue = [];
+    let promiseQueue: Promise<IteratorResult<Pair<Result>>>[] = [];
     // indexes of inputs whose jobs are yet to start
     let yetToStart = range(inputs.length);
     // set of indexes of inputs whose jobs are active right now
-    let active = new Set();
+    let active = new Set<number>();
 
     let makeNextPromise = () => {
         if (!promiseConsumed && promiseForNext) promiseQueue.push(promiseForNext);
@@ -50,7 +57,7 @@ const threadpool = (job, maxAtOnce, inputs, isCandidateAcceptable) => {
 
         // If this happens, there are jobs that will never run!
         if (yetToStart.length > 0 && active.size === 0) {
-            produceError(new Error(
+            produceError?.(new Error(
                 `The threadpool is stuck. ${yetToStart.length} input${yetToStart.length === 1 ? '' : 's'} will never be processed!` +
                 (isCandidateAcceptable ? `\nMake sure your isCandidiateAcceptable predicate is correct!` : '') +
                 `\nInput${yetToStart.length === 1 ? '' : 's'} that will not be processed: ${yetToStart.join(', ')}`
@@ -58,24 +65,24 @@ const threadpool = (job, maxAtOnce, inputs, isCandidateAcceptable) => {
         }
     }
 
-    let startJob = i => {
+    let startJob = (i: number) => {
         active.add(i);
         job(inputs[i], i).then(
-            value => {
+            result => {
                 let f = produceNext;
                 onPromiseCompleted(i);
-                f({ i, value });
+                f?.({ index: i, result });
             },
             error => {
                 let f = produceError;
                 onPromiseCompleted(i);
-                f(error);
+                f?.(error);
             }
         );
     };
 
     // When a job is done, set up a new promise for the next job
-    let onPromiseCompleted = i => {
+    let onPromiseCompleted = (i: number) => {
         active.delete(i);
         completed++;
         if (completed < inputs.length) makeNextPromise();
@@ -87,16 +94,19 @@ const threadpool = (job, maxAtOnce, inputs, isCandidateAcceptable) => {
     return {
         [Symbol.asyncIterator]: () => ({
             next: () => {
-                if (completed === inputs.length && promiseQueue.length === 0 && promiseConsumed) return Promise.resolve({ done: true });
+                if (completed === inputs.length && promiseQueue.length === 0 && promiseConsumed) return Promise.resolve({ done: true, value: undefined });
 
-                let promiseToReturn;
+                let promiseToReturn: Promise<IteratorResult<Pair<Result>>>;
 
                 if (promiseQueue.length > 0) {
-                    promiseToReturn = promiseQueue.shift();
+                    promiseToReturn = promiseQueue.shift()!;
                 }
-                else {
+                else if (promiseForNext) {
                     promiseToReturn = promiseForNext;
                     promiseConsumed = true;
+                }
+                else {
+                    throw new Error('No next promise somehow?!?');
                 }
 
                 getUpToSpeed();
@@ -107,7 +117,7 @@ const threadpool = (job, maxAtOnce, inputs, isCandidateAcceptable) => {
     };
 };
 
-const range = n => {
+const range = (n: number) => {
     let r = [];
     for (let i = 0; i < n; i++) r.push(i);
     return r;

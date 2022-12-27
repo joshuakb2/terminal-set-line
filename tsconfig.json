@@ -1,0 +1,19 @@
+{
+    "compilerOptions": {
+        "module": "CommonJS",
+        "moduleResolution": "node",
+        "lib": [ "esnext" ],
+        "charset": "utf8",
+        "target": "es2017",
+        "downlevelIteration": true,
+        "noImplicitReturns": true,
+        "noImplicitAny": true,
+        "strict": true,
+        "declaration": true,
+        "types": ["node"],
+        "newLine": "LF",
+    },
+    "include": [
+        "*.ts"
+    ]
+}
