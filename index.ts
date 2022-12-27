@@ -1,4 +1,3 @@
-import './augmentations';
 import { sync as getCursorPosition } from 'get-cursor-position';
 
 // This is the greatest virtual line number that has been set.
